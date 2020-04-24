@@ -20,3 +20,14 @@ def table(table_name, echo_sql=False):
     table_df = pd.read_sql_table(str(table_name), con=engine)
 
     return table_df
+
+
+def table_query(table_name, sql, echo_sql=False):
+    url = config('MySQL', 'url')
+    username = config('MySQL', 'username')
+    password = config('MySQL', 'password')
+    database = config('MySQL', 'database')
+    charset = config('MySQL', 'charset')
+
+    engine = create_engine('mysql://'+username+':'+password+'@'+url+'/'+database+'?charset='+charset+'', echo=echo_sql)
+    return engine.execute(sql).getchall()
