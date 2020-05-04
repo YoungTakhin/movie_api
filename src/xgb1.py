@@ -1,4 +1,3 @@
-import json
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -64,24 +63,25 @@ class Xgb:
     def fit(self):
         pd.set_option('display.max_columns', None)
         self.movies_df['date'] = self.movies_df['date'].astype(np.int64)
+
         # 0填充
         budget_mean = self.movies_df['budget'].mean()
-        self.movies_df['budget'].replace(0, budget_mean, inplace=True)
+        self.movies_df['budget'].replace(0, budget_mean, inplace=True)  # 制作成本
 
         revenue_mean = self.movies_df['revenue'].mean()
-        self.movies_df['revenue'].replace(0, revenue_mean, inplace=True)
+        self.movies_df['revenue'].replace(0, revenue_mean, inplace=True)  # 票房
 
         # one hot编码
-        genres_one_hot = one_hot(self.movies_df, 'genres', muti=True)
+        genres_one_hot = one_hot(self.movies_df, 'genres', muti=True)  # 独热编码
 
         # 看过的电影
         watched_movies_df = self.watched_movies.merge(genres_one_hot, how='left', on='tmdbid')
-        watched_movies_df.drop(['userid', 'title', 'country', 'language', 'actor', 'directing'], axis=1, inplace=True)
+        watched_movies_df.drop(['userid', 'title'], axis=1, inplace=True)
         watched_movies_df['rating'] = watched_movies_df['rating'] / 5.0
 
         # 没看过的电影
         unwatched_movies_df = genres_one_hot[~genres_one_hot['tmdbid'].isin(self.watched_movies['tmdbid'].tolist())]
-        unwatched_movies_df.drop(['title', 'country', 'language', 'actor', 'directing'], axis=1, inplace=True)
+        unwatched_movies_df.drop(['title'], axis=1, inplace=True)
         self.unwatched_movies_df = unwatched_movies_df
 
         # 训练
@@ -98,7 +98,7 @@ class Xgb:
     def recommend(self):
         dtrain, dtest = self.fit()
 
-        # 指定参数模型
+        # 指定参数模型，调参
         param = {
             'max_depth': 150,
             'eta': 0.2,
@@ -117,7 +117,8 @@ class Xgb:
 
         # 推荐
         recommend_df = id_df.sort_values(by=['recommendScroe'], ascending=False, na_position='first')[:12]
-        return json.dumps({i: z * 100 for i, z in zip(recommend_df['tmdbid'], recommend_df['recommendScroe'])})
+
+        return {i: z * 100 for i, z in zip(recommend_df['tmdbid'], recommend_df['recommendScroe'])}
 
         # 准确率计算
         # cnt1 = 0

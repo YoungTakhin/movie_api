@@ -1,6 +1,4 @@
-import json
 import pandas as pd
-from operator import itemgetter
 from sklearn.metrics.pairwise import cosine_similarity
 
 
@@ -22,35 +20,41 @@ class ItemCF:
         :return: 用户评分矩阵，df
         """
         self.train_ratings_pivotDF = pd.pivot_table(self.ratings_df[['userid', 'tmdbid', 'rating']],
-                                              columns=['tmdbid'], index=['userid'], values='rating', fill_value=0)
-        self.movies_map = dict(enumerate(list(self.train_ratings_pivotDF.columns))) # 纵坐标：tmdbid
-        self.users_map = dict(enumerate(list(self.train_ratings_pivotDF.index))) # 横坐标：userid
+                                                    columns=['tmdbid'], index=['userid'],
+                                                    values='rating', fill_value=0)  # Pandas透视图
+        self.movies_map = dict(enumerate(list(self.train_ratings_pivotDF.columns)))  # 纵坐标：tmdbid
+        self.users_map = dict(enumerate(list(self.train_ratings_pivotDF.index)))  # 横坐标：userid
 
-        self.rating_values = self.train_ratings_pivotDF.values.tolist()
+        self.rating_values = self.train_ratings_pivotDF.values.tolist()  # 转换为列表
 
     def sim(self):
-        # 余弦相似度
+        """
+        计算物品余弦相似度
+        :return:
+        """
         self.item_similarity = cosine_similarity(pd.DataFrame(self.train_ratings_pivotDF.values.T,
                                            index=self.train_ratings_pivotDF.columns,
-                                           columns=self.train_ratings_pivotDF.index))
+                                           columns=self.train_ratings_pivotDF.index))  # 利用余弦相似度求物品相似度矩阵
 
-        self.item_similarity_df = pd.DataFrame(self.item_similarity, index=self.movies_map.values(), columns=self.movies_map.values())
+        self.item_similarity_df = pd.DataFrame(self.item_similarity, index=self.movies_map.values(),
+                                               columns=self.movies_map.values())  # 转换成DataFrame数据格式
         return self.item_similarity_df
 
     def recommend(self, u):
-        K = 48 # 最相似的电影前K
-        N = 24 # 推荐的电影前N
+        K = 24  # 最相似的电影前K
+        N = 12  # 推荐的电影前N
         rank = {}
-        watched_movies = self.ratings_df[self.ratings_df['userid']==u] # 用户看过的电影
-        for t, r in zip(watched_movies['tmdbid'], watched_movies['rating']): # 遍历用户看过的电影和评分
+        watched_movies = self.ratings_df[self.ratings_df['userid']==u]  # 用户看过的电影
 
-            sim = self.item_similarity_df[t].sort_values(ascending=False, na_position='first')[1:K + 1] # 和用户看过的电影最相似的电影
-
+        # 遍历用户看过的电影和评分
+        for t, r in zip(watched_movies['tmdbid'], watched_movies['rating']):
+            sim = self.item_similarity_df[t].sort_values(ascending=False,
+                                                         na_position='first')[1:K + 1]  # 选取和用户看过的电影最相似的电影
             for s, i in zip(sim, sim.index):
-                if i in watched_movies['tmdbid'].tolist(): # 如果相似的电影也看过了，则跳过
+                if i in watched_movies['tmdbid'].tolist():  # 如果相似的电影也看过了，则跳过
                     continue
                 rank.setdefault(i, 0)
-                rank[i] += self.item_similarity_df[t][i] * float(r)
-        recommend_list = sorted(rank.items(), key=itemgetter(1), reverse=True)[:N]
+                rank[i] += self.item_similarity_df[t][i] * float(r)  # 计算推荐度
 
-        return json.dumps({i[0]: i[1] for i in recommend_list})
+        # 返回推荐度排名靠前的电影
+        return {i[0]: i[1] for i in (sorted(rank.items(), key=lambda x: x[1], reverse=True)[:N])}
