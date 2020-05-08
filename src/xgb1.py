@@ -117,7 +117,6 @@ class Xgb:
 
         # 推荐
         recommend_df = id_df.sort_values(by=['recommendScroe'], ascending=False, na_position='first')[:12]
-
         return {i: z * 100 for i, z in zip(recommend_df['tmdbid'], recommend_df['recommendScroe'])}
 
         # 准确率计算

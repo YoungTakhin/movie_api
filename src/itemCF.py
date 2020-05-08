@@ -37,7 +37,7 @@ class ItemCF:
                                            columns=self.train_ratings_pivotDF.index))  # 利用余弦相似度求物品相似度矩阵
 
         self.item_similarity_df = pd.DataFrame(self.item_similarity, index=self.movies_map.values(),
-                                               columns=self.movies_map.values())  # 转换成DataFrame数据格式
+                                              columns=self.movies_map.values())  # 转换成DataFrame数据格式
         return self.item_similarity_df
 
     def recommend(self, u):
